@@ -1,5 +1,7 @@
 .venv/
 .env
 data/raw/
+data/processed/
+*.npy
 __pycache__/
 *.pyc

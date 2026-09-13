@@ -1,0 +1,31 @@
+case_id,text_customer,intent_label
+83,‘Your items are out for delivery’...yes I’ve had he same email for the past 2 days but nothing!! Grrrrr why do I pay for prime @115830,delivery_delay_or_missing
+65,@AmazonHelp Why can’t AMZL ever driver anything on time? Preordered Xbox One X in August and for months delivery was for today yet at 7:30 (said by 8 prior) now it says if it’s not here by the 10th come back for more options. Ridiculous.,delivery_delay_or_missing
+57,"@115850 why i need to be contacted between 7-8 AM, while I prefered the order between 9AM - 6 PM . And its delayed because, they couldn't contact me over phonee https://t.co/BdSzkwlT4x",delivery_delay_or_missing
+133,"@115850 @115851 Really very bad exp with my order#403-5715801-9473140. It's already one week over,item not yet delivered. Prime member.",delivery_delay_or_missing
+26,@AmazonHelp Why has there been so many issues with delivery lately?  I've had to contact Amazon Chat more times in the last two months than in the previous years of membership,delivery_delay_or_missing
+147,"@115830 Ordered it from Amazon, should be here in a couple days tops. Provided that doesn't fail me.",delivery_status
+5,@AmazonHelp Just says dispatched,delivery_status
+159,"@AmazonHelp Have you stopped delivering on weekends? Every Prime eligible item I'm looking at is saying Want it delivered by Monday, 9 Oct?",delivery_status
+167,"@AmazonHelp Yes, yesterday at 6pm I­t scanned in Kentucky, but left the facility in Chattanooga at the origin. I live in GA. I­t went north instead of south",delivery_status
+35,"@AmazonHelp No, nothing....but according to my account details, it's still out for delivery today.",delivery_status
+95,"@AmazonHelp I have cancelled all the orders which were getting delayed and i will make sure, that i am not going to place any order on amazon.",order_change_or_cancellation
+187,"@AmazonHelp By the time I received your message it was too late to cancel. My package was FINALLY ""preparing to ship"". Anything else you can for me?",order_change_or_cancellation
+10,@115850 any chances to get it delivered before friday or saturday (20th or 21st ). So i can place the order... please reply https://t.co/TXiAHV1UxS,order_change_or_cancellation
+163,@AmazonHelp WELL THAT'S a little inflexible in my opinion. Instead could I see to cancelling my prime even though I'm a few days into renewal?  Any dm details would be helpful. cheers!,order_change_or_cancellation
+81,Thanks to @115821 same day shipping for beating the shit out of my new $350 @4770 headphones,out_of_scope
+1,@AmazonHelp Why i should pay 10000 more for the same product,out_of_scope
+66,"@115821 I think they updated the design after updating their tracking. I could be way off, but there was an easy button before. Not there now.",out_of_scope
+82,@AmazonHelp It must be. I've had the same email address for years and I have tons of old order confirmations in my inbox.,out_of_scope
+56,@116618 Hello! Where are the CC for Lucifer Ep 7 please? Thank you https://t.co/q0QS2e0d8a,out_of_scope
+11,"@AmazonHelp my refund has not been initiated yet, and the only choice left is an appeal to the consumer court :) #thankyouamazon",refund_pending
+33,@AmazonHelp yes they have given me resolution that cashback will be coming on 24 dec but recently one of them have told me of 7 to 10 days,refund_pending
+198,@AmazonHelp i spoke to you twice and you refuse to refund me. the amazon ORDER # 114-6977437-2765043 have a go at it,refund_pending
+52,@115850 Why there is no return option for laptop when product is not as described (Display resolution only issue),return_request
+96,"@AmazonHelp Thanks for the link, I have requested a replacement ☺️",return_request
+99,@AmazonHelp @115850 @115821 Amazon customer care people came with a new excuse now within 1 hour. They say that the item hasn't reached to them yet. Please see the text message I have received after returning the item on 1st November. What if the item doesn't reach you in the next 5 years? https://t.co/1hbSMHFcFx,return_request
+160,"My @3543 hue+ just arrived from @115821. The box is damaged as you can see, but hopefully all is well. https://t.co/30OJAgkJvR",wrong_or_damaged_item
+25,Swear @115821 is trash...they never even sent me one of my textbooks and the sent me a jank ass GTA disc,wrong_or_damaged_item
+105,"@AmazonHelp erm, hello, your packers need to get more secure plasters 😷✋🏻 https://t.co/KhC0Rt5s77",wrong_or_damaged_item
+20,Ordered from @115850 and the package had @118702 branding. It was almost sent back since we didn’t order from FK! https://t.co/XwX1PGcV70,wrong_or_damaged_item
+140,"@AmazonHelp Just got the second part of my order and gee-whiz wouldn’t you know, problems again...no wrapping...used...WTH?! https://t.co/YC3wEmJU4G",wrong_or_damaged_item

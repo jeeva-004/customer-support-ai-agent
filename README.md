@@ -18,31 +18,54 @@ The core pipeline processes a customer message through four sequential stages:
 
 ## 2. System Architecture
 
+### 2.1 Offline Data Preparation & Embedding Indexing
+
 ```mermaid
 flowchart TD
-    subgraph Offline_Data_Preparation ["Offline Data Preparation"]
-        A1[TWCS Dataset] --> A2[AmazonHelp Filtering]
-        A2 --> A3[Customer → AmazonHelp Pair Reconstruction]
-        A3 --> A4[English Filtering]
-        A4 --> A5[Historical Support Cases]
-        A5 --> A6["Embedding Index (all-MiniLM-L6-v2)"]
+    A["Raw Twitter Customer Support Dataset (twcs.csv)"] --> B["AmazonHelp Reply Extraction (169,840 brand replies)"]
+    B --> C["Parent-Child Customer Tweet Matching (168,814 customer-agent pairs)"]
+    C --> D["English Language Filtering via langdetect (124,408 clean pairs)"]
+    D --> E["Historical Resolution Corpus (text_customer + text_brand)"]
+    E --> F["Dense Vector Encoding (SentenceTransformer all-MiniLM-L6-v2)"]
+    F --> G["Precomputed Binary Vector Index (retrieval_embeddings.npy)"]
+```
+
+### 2.2 Online Customer Message Inference & Routing Pipeline
+
+```mermaid
+flowchart TD
+    MSG["Inbound Customer Message"] --> CLS["1. Intent Classification (src/production/classify_intent.py)"]
+    
+    subgraph HYBRID ["Hybrid Classifier Architecture"]
+        CLS --> R1["Step 1: Deterministic Keyword Rules (rule_based_intent)"]
+        R1 -->|Keyword Match| INT["Validated Intent (1 of 7 Classes)"]
+        R1 -->|No Rule Match| R2["Step 2: Local LLM Fallback (Qwen2.5 1.5B via Ollama)"]
+        R2 --> INT
     end
 
-    subgraph Online_Inference_Flow ["Online Inference Flow"]
-        B1[Customer Message] --> B2[Intent Classification]
-        B2 --> B3{Hybrid Classifier}
-        B3 -->|Deterministic Rules| B4[7 Supported Intents]
-        B3 -->|LLM Fallback| B5["Qwen2.5 1.5B (via Ollama)"]
-        B5 --> B4
-        B4 --> B6[Historical Case Retrieval]
-        B6 --> B7["all-MiniLM-L6-v2 Embeddings"]
-        B7 --> B8[Top-3 Similar AmazonHelp Cases]
-        B8 --> B9{Escalation Decision}
-        B9 -->|Out of Scope| B10[Escalate to Human Agent]
-        B9 -->|Similarity < 0.60| B10
-        B9 -->|Supported + Similarity ≥ 0.60| B11[Auto Handle: Reply Generation]
-        B11 --> B12["Qwen2.5 1.5B (via Ollama)"]
-        B12 --> B13[Final Customer Reply]
+    INT --> RET["2. Dense Semantic Retrieval (src/production/retrieve_embeddings.py)"]
+    
+    subgraph RETRIEVAL ["Dense Retrieval Engine"]
+        RET --> SEARCH["Dot Product Cosine Similarity vs retrieval_embeddings.npy"]
+        SEARCH --> TOP3["Top-3 Similar Historical AmazonHelp Support Cases"]
+    end
+
+    TOP3 --> ESC["3. Escalation Decision Engine (src/production/escalate.py)"]
+    
+    subgraph ESCALATION ["Escalation Logic Safeguards"]
+        ESC -->|Intent == out_of_scope| DEC_ESC["DECISION: ESCALATE"]
+        ESC -->|Top Similarity < 0.60| DEC_ESC
+        ESC -->|Supported Intent + Similarity >= 0.60| DEC_AUTO["DECISION: AUTO_HANDLE"]
+    end
+
+    DEC_ESC --> HUMAN["Route Query to Human Agent"]
+    
+    DEC_AUTO --> GEN["4. Grounded Reply Generation (src/production/generate_reply.py)"]
+    
+    subgraph GENERATOR ["Grounded LLM Generator"]
+        GEN --> PROMPT["Grounding Prompt with Top-3 Historical AmazonHelp Responses"]
+        PROMPT --> LLM["Local LLM Inference (Qwen2.5 1.5B via Ollama at temperature=0)"]
+        LLM --> REPLY["Final Grounded Customer Support Reply"]
     end
 ```
 

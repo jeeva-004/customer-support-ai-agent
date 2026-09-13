@@ -1,7 +1,11 @@
+import os
+import sys
 import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "production")))
 
 from classify_intent import classify_intent
 from generate_reply import generate_reply

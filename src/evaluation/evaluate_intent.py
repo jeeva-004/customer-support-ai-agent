@@ -1,6 +1,11 @@
+import os
+import sys
 import pandas as pd
-from classify_intent import classify_intent
 from sklearn.metrics import classification_report, confusion_matrix
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "production")))
+
+from classify_intent import classify_intent
 
 TEST_PATH = "eval/golden_test.csv"
 OUTPUT_PATH = "eval/intent_predictions.csv"

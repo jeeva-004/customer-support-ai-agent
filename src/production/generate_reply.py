@@ -1,4 +1,9 @@
+import os
+import sys
 import requests
+
+sys.path.append(os.path.dirname(__file__))
+
 from retrieve_embeddings import retrieve_similar_cases
 
 OLLAMA_URL = "http://localhost:11434/api/generate"

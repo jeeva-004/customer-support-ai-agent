@@ -1,5 +1,9 @@
+import os
+import sys
 import pandas as pd
 from sklearn.metrics import accuracy_score, classification_report
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "production")))
 
 from classify_intent import classify_intent
 

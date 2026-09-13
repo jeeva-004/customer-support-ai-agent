@@ -1,6 +1,10 @@
+import os
+import sys
 import json
 import requests
 import pandas as pd
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "production")))
 
 from retrieve_embeddings import retrieve_similar_cases
 from generate_reply import generate_reply

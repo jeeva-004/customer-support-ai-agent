@@ -16,20 +16,54 @@ The core pipeline processes a customer message through four sequential stages:
 
 ---
 
-## 2. Problem Statement
+## 2. System Architecture
+
+```mermaid
+flowchart TD
+    subgraph Offline_Data_Preparation ["Offline Data Preparation"]
+        A1[TWCS Dataset] --> A2[AmazonHelp Filtering]
+        A2 --> A3[Customer → AmazonHelp Pair Reconstruction]
+        A3 --> A4[English Filtering]
+        A4 --> A5[Historical Support Cases]
+        A5 --> A6["Embedding Index (all-MiniLM-L6-v2)"]
+    end
+
+    subgraph Online_Inference_Flow ["Online Inference Flow"]
+        B1[Customer Message] --> B2[Intent Classification]
+        B2 --> B3{Hybrid Classifier}
+        B3 -->|Deterministic Rules| B4[7 Supported Intents]
+        B3 -->|LLM Fallback| B5["Qwen2.5 1.5B (via Ollama)"]
+        B5 --> B4
+        B4 --> B6[Historical Case Retrieval]
+        B6 --> B7["all-MiniLM-L6-v2 Embeddings"]
+        B7 --> B8[Top-3 Similar AmazonHelp Cases]
+        B8 --> B9{Escalation Decision}
+        B9 -->|Out of Scope| B10[Escalate to Human Agent]
+        B9 -->|Similarity < 0.60| B10
+        B9 -->|Supported + Similarity ≥ 0.60| B11[Auto Handle: Reply Generation]
+        B11 --> B12["Qwen2.5 1.5B (via Ollama)"]
+        B12 --> B13[Final Customer Reply]
+    end
+```
+
+The offline data preparation pipeline extracts `@AmazonHelp` customer-agent pairs from the raw Twitter Customer Support (TWCS) dataset, cleans non-English text, and precomputes dense vector representations for 124,408 support pairs using `all-MiniLM-L6-v2`. During online inference, an incoming customer message is classified across 7 supported intents using deterministic keyword rules backed by `Qwen2.5 1.5B` via Ollama. Dense retrieval fetches the top-3 similar historical cases; if the query is out of scope or top retrieval similarity is below the 0.60 threshold, the system escalates to a human agent, otherwise `Qwen2.5 1.5B` generates a grounded support reply.
+
+---
+
+## 3. Problem Statement
 
 Customer support teams receive high volumes of social media queries ranging from simple order status inquiries to complex complaints. Fully automated response systems risk hallucinating policies, links, or actions. Conversely, manual handling of every message causes long resolution delays. This project implements a grounded retrieval-augmented support agent coupled with deterministic escalation safeguards to ensure high relevance and safety.
 
 ---
 
-## 3. Selected Brand
+## 4. Selected Brand
 
 * **Brand**: `AmazonHelp`
 * **Data Source**: Twitter Customer Support (TWCS) dataset (`data/raw/twcs.csv`).
 
 ---
 
-## 4. Supported Scope & Intent Labels
+## 5. Supported Scope & Intent Labels
 
 The agent supports **7 intent classes**:
 
@@ -43,7 +77,7 @@ The agent supports **7 intent classes**:
 
 ---
 
-## 5. Out-of-Scope Categories
+## 6. Out-of-Scope Categories
 
 Queries classified as `out_of_scope` include:
 * Amazon Prime membership or trial issues
@@ -53,31 +87,31 @@ Queries classified as `out_of_scope` include:
 
 ---
 
-## 6. Dataset & Preprocessing
+## 7. Dataset & Preprocessing
 
 * **Raw Data**: `data/raw/twcs.csv` (Twitter Customer Support dataset).
-* **Brand Extraction & Pairing (`src/filter_brand.py`)**:
+* **Brand Extraction & Pairing (`src/production/filter_brand.py`)**:
   * Extracted 169,840 `AmazonHelp` brand replies (`author_id == "AmazonHelp"`).
   * Matched parent customer tweets via `in_response_to_tweet_id` to form 168,814 customer → AmazonHelp pairs (`amazonhelp_pairs.csv`).
-* **English Filtering (`src/filter_english.py`)**:
+* **English Filtering (`src/production/filter_english.py`)**:
   * Applied `langdetect` (seed 42) with a minimum customer text length of 5 characters.
   * Yielded 124,408 clean English customer-agent pairs (`amazonhelp_english_pairs.csv`).
 
 ---
 
-## 7. Golden Evaluation Set
+## 8. Golden Evaluation Set
 
-* **Dataset (`src/check_golden_data.py`)**: Sampled 200 unique customer tweets (`eval/golden_set.csv`) for manual intent labeling.
-* **Reference / Test Split (`src/split_golden_set.py`)**:
+* **Dataset (`src/evaluation/check_golden_data.py`)**: Sampled 200 unique customer tweets (`eval/golden_set.csv`) for manual intent labeling.
+* **Reference / Test Split (`src/evaluation/split_golden_set.py`)**:
   * Fixed split using `random_state=42`.
   * **Reference Set**: 150 cases (`eval/golden_reference.csv`), used for few-shot prompt examples and TF-IDF baseline reference data.
   * **Held-out Test Set**: 50 cases (`eval/golden_test.csv`), reserved strictly for evaluation.
 
 ---
 
-## 8. Intent Classification
+## 9. Intent Classification
 
-* **Implementation (`src/classify_intent.py`)**: Hybrid system:
+* **Implementation (`src/production/classify_intent.py`)**: Hybrid system:
   1. **Deterministic Rules**: Heuristic keyword/phrase matching for out-of-scope terms (e.g., "alexa", "prime"), returns ("return"), refunds ("refund"), wrong/damaged items ("damaged product"), and cancellations ("cancel my order").
   2. **LLM Fallback**: If no rule matches, calls local Ollama LLM (`qwen2.5:1.5b`, `temperature=0`) with intent definitions and 150 reference examples (`eval/intent_reference_examples.csv`).
 * **Evaluation Results**:
@@ -87,26 +121,26 @@ Queries classified as `out_of_scope` include:
 
 ---
 
-## 9. Semantic Retrieval
+## 10. Semantic Retrieval
 
-* **Baseline**: TF-IDF vectorizer + cosine similarity (`src/retrieve.py` / `src/classify_tfidf.py`). Simple keyword matching failed on semantic variations without exact token overlaps.
-* **Final Technique (`src/retrieve_embeddings.py`)**: Dense vector retrieval using `SentenceTransformer("all-MiniLM-L6-v2")`.
+* **Baseline**: TF-IDF vectorizer + cosine similarity (`src/production/retrieve.py` / `src/evaluation/classify_tfidf.py`). Simple keyword matching failed on semantic variations without exact token overlaps.
+* **Final Technique (`src/production/retrieve_embeddings.py`)**: Dense vector retrieval using `SentenceTransformer("all-MiniLM-L6-v2")`.
   * Precomputed 384-dimensional normalized embeddings for 124,408 English customer-agent pairs stored on disk (`data/processed/amazonhelp_embeddings.npy` or `retrieval_embeddings.npy`).
   * Performs in-memory dot product search (`CASE_EMBEDDINGS @ query_embedding`) to retrieve the top `k=3` most similar historical support cases.
 
 ---
 
-## 10. Reply Generation
+## 11. Reply Generation
 
-* **Implementation (`src/generate_reply.py`)**: Local LLM generation via Ollama (`qwen2.5:1.5b`, `temperature=0`).
+* **Implementation (`src/production/generate_reply.py`)**: Local LLM generation via Ollama (`qwen2.5:1.5b`, `temperature=0`).
 * **Grounding Context**: Prompt embeds top-3 historical AmazonHelp responses as evidence.
 * **Privacy & Safety Constraints**: Historical customer messages are explicitly excluded from the prompt to avoid leaking third-party handles, names, or order numbers. Prompt enforces strict rules against inventing tracking numbers, URLs, policies, or claiming unperformed actions.
 
 ---
 
-## 11. Escalation Safeguards
+## 12. Escalation Safeguards
 
-* **Implementation (`src/escalate.py`)**: Deterministic 4-step decision tree (`decide_escalation`):
+* **Implementation (`src/production/escalate.py`)**: Deterministic 4-step decision tree (`decide_escalation`):
   1. If `intent == "out_of_scope"` → `escalate` (Reason: Request outside supported intents).
   2. If `not retrieved_cases` → `escalate` (Reason: No historical cases retrieved).
   3. If `top_similarity < 0.60` → `escalate` (Reason: Retrieved cases not sufficiently similar).
@@ -114,7 +148,7 @@ Queries classified as `out_of_scope` include:
 
 ---
 
-## 12. Evaluation & Results
+## 13. Evaluation & Results
 
 ### Valid Metrics Summary
 
@@ -129,12 +163,12 @@ Queries classified as `out_of_scope` include:
 *Note on Human Review*: Human evaluation was conducted on a subset of 10 non-out-of-scope test cases (`n=10`). The percentages reflect positive indicator rates scored by one human rater, **NOT inter-rater agreement**.
 
 ### Experimental / Unreliable Evaluations
-* **LLM Reply Judge (`src/evaluate_replies.py`)**: Attempted using `qwen2.5:1.5b` to rate replies 1–5. Produced flat output scores of 1 across all metrics due to prompt/parsing limitations.
-* **LLM Evidence Judge (`src/evaluate_evidence.py`)**: Attempted using `qwen2.5:1.5b` to extract and label claims. Falsely labeled hallucinatory claims as "supported" (producing an invalid 100% rate). Treated as an abandoned/unreliable experiment and excluded from valid metrics.
+* **LLM Reply Judge (`src/evaluation/evaluate_replies.py`)**: Attempted using `qwen2.5:1.5b` to rate replies 1–5. Produced flat output scores of 1 across all metrics due to prompt/parsing limitations.
+* **LLM Evidence Judge (`src/evaluation/evaluate_evidence.py`)**: Attempted using `qwen2.5:1.5b` to extract and label claims. Falsely labeled hallucinatory claims as "supported" (producing an invalid 100% rate). Treated as an abandoned/unreliable experiment and excluded from valid metrics.
 
 ---
 
-## 13. Known Limitations
+## 14. Known Limitations
 
 1. **Intent Classifier Performance**: The hybrid classifier achieved 50% accuracy on held-out test data, failing to beat the 52% majority baseline due to boundary confusion between closely related intents.
 2. **Reply Grounding & Hallucinations**: Human review showed only a 30% grounding rate. The small 1.5B model frequently fabricates generic Twitter short links (e.g. `https://t.co/...`) or policy details despite system prompt constraints.
@@ -144,7 +178,7 @@ Queries classified as `out_of_scope` include:
 
 ---
 
-## 14. How to Run the Project
+## 15. How to Run the Project
 
 ### Prerequisites
 * **Python**: 3.10 or higher
@@ -168,24 +202,24 @@ Queries classified as `out_of_scope` include:
 
 * **Run Full Pipeline Tests**:
   ```bash
-  python src/smoke_test.py
-  python src/test_pipeline.py
+  python src/tests/smoke_test.py
+  python src/tests/test_pipeline.py
   ```
 
 * **Run Intent & Baseline Evaluation**:
   ```bash
-  python src/evaluate_baselines.py
-  python src/evaluate_intent.py
+  python src/evaluation/evaluate_baselines.py
+  python src/evaluation/evaluate_intent.py
   ```
 
 * **Run Human Agreement Calculation**:
   ```bash
-  python src/calculate_human_agreement.py
+  python src/evaluation/calculate_human_agreement.py
   ```
 
 * **Programmatic Usage**:
   ```python
-  from src.pipeline import process_customer_message
+  from src.production.pipeline import process_customer_message
 
   result = process_customer_message("Where is my refund? I still haven't received it.")
   print("Intent:", result["intent"])

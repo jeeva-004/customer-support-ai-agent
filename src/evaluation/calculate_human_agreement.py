@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "p
 from pipeline import process_customer_message
 
 
-result = process_customer_message("The ordered Item is damaged")
+result = process_customer_message("i think this item not for me")
 print("Intent:", result["intent"])
 print("Decision:", result["decision"])
 print("Reason:", result["reason"])

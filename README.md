@@ -201,27 +201,97 @@ Queries classified as `out_of_scope` include:
 
 ---
 
-## 15. How to Run the Project
+## 15. Installation & Setup
 
 ### Prerequisites
-* **Python**: 3.10 or higher
-* **Ollama**: Installed and running locally (`http://localhost:11434`)
-* **Local Model**: Pull the Qwen2.5 1.5B model:
-  ```bash
-  ollama pull qwen2.5:1.5b
-  ```
 
-### Installation
-1. Clone or navigate to the repository directory:
-   ```bash
-   cd E:\customer-support-ai-agent
-   ```
-2. Install Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+| Requirement | Details |
+| :--- | :--- |
+| **Python** | 3.10 or higher |
+| **Ollama** | Installed and running locally at `http://localhost:11434` ([ollama.com/download](https://ollama.com/download)) |
+| **Disk space** | ~3-5 GB (PyTorch, the `qwen2.5:1.5b` model, embeddings, and dataset) |
+| **Internet** | Needed once to install packages, pull the Ollama model, and download the `all-MiniLM-L6-v2` embedding model from Hugging Face (cached afterwards) |
+| **Dataset** | Twitter Customer Support (TWCS) `twcs.csv` from [Kaggle](https://www.kaggle.com/datasets/thoughtvector/customer-support-on-twitter) |
 
-### Execution
+### Step 1: Get the code and create a virtual environment
+
+```bash
+cd customer-support-ai-agent
+
+# Create the virtual environment
+python -m venv .venv
+
+# Activate it
+# Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+# Windows (cmd):
+.venv\Scripts\activate.bat
+# macOS / Linux:
+source .venv/bin/activate
+```
+
+### Step 2: Install Python dependencies
+
+```bash
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+`requirements.txt` contains these direct dependencies:
+
+| Package | Used for |
+| :--- | :--- |
+| `pandas`, `numpy` | Data loading, preprocessing, embedding math |
+| `scikit-learn` | TF-IDF baseline, cosine similarity, evaluation metrics |
+| `sentence-transformers` | Dense retrieval with `all-MiniLM-L6-v2` (also installs `torch` and `transformers`) |
+| `langdetect` | English-language filtering of the TWCS data |
+| `requests` | Calls to the local Ollama HTTP API |
+
+> **Tip (CPU-only machines):** `sentence-transformers` installs PyTorch, which is a large download. To avoid the GPU/CUDA build, install the CPU version first:
+> `pip install torch --index-url https://download.pytorch.org/whl/cpu`, then run `pip install -r requirements.txt`.
+
+### Step 3: Set up Ollama and the local model
+
+```bash
+ollama pull qwen2.5:1.5b
+ollama list          # confirm qwen2.5:1.5b is listed
+```
+
+Make sure the Ollama server is running (the desktop app starts it automatically; otherwise run `ollama serve` in a separate terminal). Quick check: open `http://localhost:11434` in a browser, it should respond with "Ollama is running".
+
+### Step 4: Add the dataset
+
+The `data/` folder is git-ignored, so create it yourself and place the TWCS file inside:
+
+```bash
+mkdir -p data/raw data/processed     # Windows PowerShell: mkdir data\raw, data\processed
+# Place the downloaded file at: data/raw/twcs.csv
+```
+
+### Step 5: Build the processed data (one-time)
+
+**Run all commands from the project root folder** (the scripts use relative paths such as `data/...` and `eval/...`).
+
+```bash
+# 1. Extract AmazonHelp replies and match them to customer tweets
+python src/production/filter_brand.py        # -> data/processed/amazonhelp_pairs.csv
+
+# 2. Keep English-language pairs only (takes a few minutes)
+python src/production/filter_english.py      # -> data/processed/amazonhelp_english_pairs.csv
+```
+
+The embedding index (`data/processed/amazonhelp_embeddings.npy`) is built **automatically on the first pipeline run** and cached for later runs. This encodes ~124k messages, so the first run can take a while on CPU.
+
+### Step 6: Verify the installation
+
+```bash
+python -c "import pandas, numpy, sklearn, sentence_transformers, langdetect, requests; print('All dependencies OK')"
+python src/tests/smoke_test.py
+```
+
+---
+
+## 16. How to Run the Project
 
 * **Run Full Pipeline Tests**:
   ```bash
@@ -229,7 +299,7 @@ Queries classified as `out_of_scope` include:
   python src/tests/test_pipeline.py
   ```
 
-* **Run Intent & Baseline Evaluation**:
+* **Run Intent & Baseline Evaluation** (requires Ollama running):
   ```bash
   python src/evaluation/evaluate_baselines.py
   python src/evaluation/evaluate_intent.py
@@ -240,7 +310,7 @@ Queries classified as `out_of_scope` include:
   python src/evaluation/calculate_human_agreement.py
   ```
 
-* **Programmatic Usage**:
+* **Programmatic Usage** (from the project root):
   ```python
   from src.production.pipeline import process_customer_message
 
@@ -250,3 +320,13 @@ Queries classified as `out_of_scope` include:
   print("Reason:", result["reason"])
   print("Reply:", result["reply"])
   ```
+
+### Troubleshooting
+
+| Problem | Fix |
+| :--- | :--- |
+| `ModuleNotFoundError: No module named 'sentence_transformers'` or `'requests'` | Activate the virtual environment and re-run `pip install -r requirements.txt` |
+| `FileNotFoundError: data/processed/amazonhelp_english_pairs.csv` | Run Step 5 from the project root, and make sure `data/raw/twcs.csv` exists |
+| `ConnectionError ... localhost:11434` | Ollama is not running; start the Ollama app or run `ollama serve` |
+| Ollama returns "model not found" | Run `ollama pull qwen2.5:1.5b` |
+| First run is very slow | The embedding index is being built once; later runs load the cached `.npy` file |

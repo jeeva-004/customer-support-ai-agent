@@ -1,13 +1,20 @@
-cloudpickle==3.1.2
-joblib==1.6.0
-langdetect==1.0.9
-numpy==2.2.6
+# Customer Support AI Agent (AmazonHelp)
+# Python 3.10+ required. Install with: pip install -r requirements.txt
+# Only direct dependencies are listed; pip resolves transitive ones
+# (scipy, joblib, torch, transformers, huggingface-hub, etc.) automatically.
+
+# --- Data handling ---
 pandas==2.3.3
-python-dateutil==2.9.0.post0
-python-dotenv==1.2.3
-pytz==2026.3.post1
+numpy==2.2.6
+
+# --- Classical ML (TF-IDF baseline, cosine similarity, metrics) ---
 scikit-learn==1.7.2
-scipy==1.15.3
-six==1.17.0
-threadpoolctl==3.6.0
-tzdata==2026.3
+
+# --- Dense semantic retrieval (all-MiniLM-L6-v2; pulls in PyTorch + transformers) ---
+sentence-transformers==6.2.0
+
+# --- English language filtering (src/production/filter_english.py) ---
+langdetect==1.0.9
+
+# --- HTTP client for the local Ollama API (classify_intent, generate_reply, eval judges) ---
+requests==2.34.2
